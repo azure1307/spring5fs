@@ -3,6 +3,7 @@ package spring;
 import java.time.format.DateTimeFormatter;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.lang.Nullable;
 
 public class MemberPrinter {
 	private DateTimeFormatter dateTimeFormatter;
@@ -26,8 +27,8 @@ public class MemberPrinter {
 		}
 	}
 	
-	@Autowired(required = false)
-	public void setDateTimeFormatter(DateTimeFormatter dateTimeFormatter) {
+	@Autowired
+	public void setDateTimeFormatter(@Nullable DateTimeFormatter dateTimeFormatter) {
 		this.dateTimeFormatter = dateTimeFormatter;
 	}
 
