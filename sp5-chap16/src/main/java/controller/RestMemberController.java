@@ -1,11 +1,18 @@
 package controller;
 
 import java.io.IOException;
+import java.net.URI;
 import java.util.List;
+import java.util.stream.Collector;
+import java.util.stream.Collectors;
 
 import javax.servlet.http.HttpServletResponse;
 import javax.validation.Valid;
 
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.validation.Errors;
+import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -15,6 +22,7 @@ import org.springframework.web.bind.annotation.RestController;
 import spring.DuplicateMemberException;
 import spring.Member;
 import spring.MemberDao;
+import spring.MemberNotFoundException;
 import spring.MemberRegisterService;
 import spring.RegisterRequest;
 
@@ -30,25 +38,33 @@ public class RestMemberController {
 	}
 
 	@GetMapping("/api/members/{id}")
-	public Member member(@PathVariable Long id, HttpServletResponse response) throws IOException {
+	public Member member(@PathVariable Long id) {
 		Member member = memberDao.selectById(id);
 		if (member == null) {
-			response.sendError(HttpServletResponse.SC_NOT_FOUND);
-			return null;
+			throw new MemberNotFoundException();
 		}
 		return member;
 	}
 
 	@PostMapping("/api/members")
-	public void newMember(
+	public ResponseEntity<Object> newMember(
 			@RequestBody @Valid RegisterRequest regReq,
-			HttpServletResponse response) throws IOException {
+			Errors errors) {
+		if (errors.hasErrors()) {
+			String errorCodes = errors.getAllErrors() // List<ObjectError>
+					.stream()
+					.map(error -> error.getCodes()[0]) // error는 ObjectError
+					.collect(Collectors.joining(","));
+			return ResponseEntity
+					.status(HttpStatus.BAD_REQUEST)
+					.body(new ErrorResponse("errorCodes = " + errorCodes));
+		}
 		try {
 			Long newMemberId = registerService.regist(regReq);
-			response.setHeader("Location", "/api/members/" + newMemberId);
-			response.setStatus(HttpServletResponse.SC_CREATED);
+			URI uri = URI.create("/api/members/" + newMemberId);
+			return ResponseEntity.created(uri).build();
 		} catch (DuplicateMemberException dupEx) {
-			response.sendError(HttpServletResponse.SC_CONFLICT);
+			return ResponseEntity.status(HttpStatus.CONFLICT).build();
 		}
 	}
 	
